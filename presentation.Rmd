@@ -1,0 +1,320 @@
+---
+---
+---
+
+# Mobile Price Analysis
+
+Statistical Laboratory
+
+Sameer Afzal - University of Catania
+
+## Description
+
+One of the companies wants to started his own mobile company. they wants to give tough fight to big companies like Apple, Samsung, etc. They does not know how to estimate price of mobiles his company creates. In this competitive mobile phone market you cannot simply assume things. To solve this problem they collects sales data of mobile phones of various companies.
+
+## **1. Packages and Loading Data set**
+
+There are some data sets that are already pre-installed in R. Here, we shall be using external **Mobile Price Classification** data set that not comes built-in R Package.
+
+While using any external data source, we can use the read command to load the files(Excel, CSV, HTML and text files etc.)
+
+This data set is also available at [Kaggle](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification). You may download the data set, both train and test files. In this analysis, we'd be just using the train data set.
+
+```{r}
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(pacman)
+library(nnet)
+pacman::p_load(pacman, dplyr, ggplot2, rio, gridExtra, scales, ggcorrplot, caret)
+```
+
+```{r}
+data = read.csv("C:\\Users\\samee\\OneDrive\\Desktop\\Satistic lab\\presentation\\train.csv")
+
+```
+
+The above code reads the file train.csv into a dataframe **data**.
+
+## **2. Understanding the Data set**
+
+We have used the Mobile Price data set that contains records of 2000 mobiles with different spec . Below is a brief description of the 21 variables in the data set :
+
+-   battery_power = Total energy a battery can store in one time measured in mAh.
+
+-   blue = Has bluetooth or not. \| 1: Has , 0: doesn't have
+
+-   clock_speed = Speed at which microprocessor executes instructions.
+
+-   dual_sim = Has dual sim support or not \| 1: support , 0: doesn't support
+
+-   fc = Front Camera mega pixels.
+
+-   four_g= Has 4G or not. \| 1: Has , 0: doesn't have
+
+-   int_memory= Internal memory in gigabytes.
+
+-   m_dep = Mobile Depth in cm
+
+-   mobile_wt = Weight of mobile phone.
+
+-   n_cores = Number of cores of processor.
+
+-   pc = primary camera mega pixels.
+
+-   px_height = Pixel Resolution Height.
+
+-   px_width = Pixel Resolution Width.
+
+-   ram = Random Access Memory in Mega Bytes.
+
+-   sc_h = Screen Height of mobile in cm
+
+-   sc_w = Screen Width of mobile in cm
+
+-   talk_time = Longest time that a single battery charge will last when you are.
+
+-   three_g = Has 3G or not. \| 1: Has, 0: Doesn't have
+
+-   touch_screen = Has touch screen or not. \| 1: Has, 0: Doesn't have
+
+-   wifi = Has WiFi or not. \| 1: Has, 0: Doesn't have
+
+-   price_range = This is the target variable. \| 3: Very High Cost, 2: High Cost, 1: Medium Cost, 0: Low Cost
+
+## 2.1 Peek at your Data
+
+Before we begin working on the dataset, let's have a good look at the raw data.
+
+**names() : This helps us in checking out all the variables in the data set.**
+
+```{r}
+names(data)
+```
+
+**In order to have a quick look at the data, we often use the head()/tail().**
+
+```{r}
+head(data)
+```
+
+```{r}
+tail(data)
+```
+
+**str() :** This helps in understanding the structure of the data set, data type of each attribute and number of rows and columns present in the data.
+
+```{r}
+str(data)
+```
+
+**summary():** is one of the most important functions that help in summarising each attribute in the dataset. It gives a set of descriptive statistics, depending on the type of variable:
+
+-   In case of a Numerical Variable -\> Gives Mean, Median, Mode, Range and Quartiles.
+
+-   In case of a Factor Variable -\> Gives a table with the frequencies.
+
+-   In case of Factor + Numerical Variables -\> Gives the number of missing values.
+
+-   In case of character variables -\> Gives the length and the class.
+
+In case we just need the summary statistic for a particular variable in the dataset, we can use **summary(datasetName\$VariableName)**
+
+```{r}
+summary(data)
+```
+
+**as.factor(dataset\$ColumnName)**
+
+There are times when some of the variables in the data set are factors but might get interpreted as numeric. For example, the price_range(Price Range) tales the values 0, 1, 2 and 3, however, we know that these are not to be considered as numeric, as these are just levels. In order to such variables treated as factors and not as numbers we need explicitly convert them to factors using the function **as.factor()**
+
+```{r}
+org_data = data
+data$price_range <- factor(data$price_range, levels = c(0,1,2,3),
+                       labels = c("low cost", "medium cost", "high cost", "very high cost"))
+data$blue <- as.factor(data$blue)
+data$dual_sim <- as.factor(data$dual_sim)
+data$four_g <- as.factor(data$four_g)
+data$three_g <- as.factor(data$three_g)
+data$touch_screen <- as.factor(data$touch_screen)
+data$wifi <- as.factor(data$wifi)
+```
+
+```{r}
+summary(data$price_range)
+summary(data$dual_sim)
+summary(data$four_g)
+summary(data$blue)
+summary(data$three_g)
+summary(data$touch_screen)
+summary(data$wifi)
+```
+
+## **3. Analysis & Visualizations**
+
+Now that we have an understanding of the dataset, and the variables, we need to identify the variables of interest. Domain knowledge and the correlation between variables help in choosing these variables.
+
+We can now start our Data Visualization by plotting a Correlation Matrix of our dataset
+
+```{r}
+corr <- round(cor(org_data), 8)
+ggcorrplot(corr)
+```
+
+**3.1 Univariate Data Analysis**
+
+```{r}
+ggplot(data=data, aes(x = price_range)) +
+  geom_bar()
+```
+
+```{r}
+ggplot(data = data, aes(y=price_range)) +
+  geom_boxplot() +
+  labs(title = "Mobile Price Classification", y="Price Range")
+```
+
+From the result above, we know the amount of data in dataset has the same amount in each class that consist of low cost, medium cost, high cost, and very high cost.
+
+We can now create 3 Bar Plots by storing them in there different variables (p1, p2, p3) and then add them to **grid.arrange()** to create a subplot. In this case, I decided to examine the Bluetooth, Dual Sim and 4G features. As we can see below, a slight majority of mobiles considered in this Dataset does not support Bluetooth, is Dual Sim and has 4G support.
+
+```{r}
+# Bar Chart Subplots
+p1 <-  ggplot(data, aes(x=blue, fill=blue)) +
+  theme_bw() +
+  geom_bar() +
+  ylim(0, 1050) +
+  labs(title = "Bluetooth") +
+  scale_x_discrete(labels = c('Not Supported','Supported'))
+p2 <- ggplot(data, aes(x=dual_sim, fill=dual_sim)) +
+  theme_bw() +
+  geom_bar() +
+  ylim(0, 1050) +
+  labs(title = "Dual Sim") +
+  scale_x_discrete(labels = c('Not Supported','Supported'))
+p3 <- ggplot(data, aes(x=four_g, fill=four_g)) +
+  theme_bw() +
+  geom_bar() +
+  ylim(0, 1050) +
+  labs(title = "4 G") +
+  scale_x_discrete(labels = c('Not Supported','Supported'))
+grid.arrange(p1, p2, p3, nrow = 1)
+```
+
+Taking our analysis a step further, we can now calculate the precise percentages of the difference between the different cases using the **prop.table()** function. As we can see from the resulting output (Figure 7), 50.5% of the considered mobile devices do not support Bluetooth, 50.9% is Dual Sim and 52.1% has 4G.
+
+```{r}
+prop.table(table(data$blue)) # cell percentages
+prop.table(table(data$dual_sim)) # cell percentages
+prop.table(table(data$four_g)) # cell percentages
+```
+
+**3.2 Bivariate Data Analysis**
+
+Analysis of two variables, We can find out some relation between features of mobile phone and its selling price.
+
+```{r}
+ggplot(data, aes(x=price_range, fill = blue)) +
+  geom_bar(position = "dodge")
+```
+
+```{r}
+ggplot(data, aes(x=price_range, fill = dual_sim)) +
+  geom_bar(position = "dodge")
+```
+
+```{r}
+ggplot(data, aes(x=price_range, fill = four_g)) +
+  geom_bar(position = "dodge")
+```
+
+```{r}
+ggplot(data, aes(x=price_range, fill = three_g)) +
+  geom_bar(position = "dodge")
+```
+
+```{r}
+ggplot(data, aes(x=price_range, fill = touch_screen)) +
+  geom_bar(position = "dodge")
+```
+
+```{r}
+ggplot(data, aes(x=price_range, fill = wifi)) +
+  geom_bar(position = "dodge")
+```
+
+We can now go on creating 3 different Box Plots using the same technique used before. In this case, I decided to examine how having more battery power, phone weight and RAM (Random Access Memory) can affect mobiles prices. In this Dataset, we are not given the actual phone prices but a price range indicating how high the price is (four different levels from 0 to 3).
+
+```{r}
+# Bar Chart Subplots
+p1 <-  ggplot(data, aes(x=price_range, y = battery_power, color=price_range)) +
+  geom_boxplot(outlier.colour="red", outlier.shape=8,
+               outlier.size=4) +
+  labs(title = "Battery Power vs Price Range")
+p2 <- ggplot(data, aes(x=price_range, y = mobile_wt, color=price_range)) +
+  geom_boxplot(outlier.colour="red", outlier.shape=8,
+               outlier.size=4) +
+  labs(title = "Phone Weight vs Price Range")
+p3 <- ggplot(data, aes(x=price_range, y = ram, color=price_range)) +
+  geom_boxplot(outlier.colour="red", outlier.shape=8,
+               outlier.size=4) +
+  labs(title = "RAM vs Price Range")
+p1
+p2
+p3
+```
+
+Increasing Battery Power and RAM consistently lead to an increase in Price. Instead, more expensive phones seem to be overall more lightweight. In the RAM vs Price Range plot have interestingly been registred some outliers values in the overall distribution.
+
+Observations based on **ram** and **cores** variables. We need to know whether the number of ram and cores can affect the price. The color and shape of the observations are based on selling price (low cost, medium cost, high cost, and very high cost).
+
+```{r}
+ggplot(data=data, aes(x=ram, y=n_cores,
+                        shape=price_range, color=price_range)) +
+  geom_point() +
+  labs(title = "Mobile Price Classification", x="Ram", y="Cores")
+```
+
+In general, the number of ram and cores has a big effect on the price range. Smartphone that have a big ram are classified as having a higher price than a small ram. However, these two variables are not enough to separate the classes.
+
+## **4. Modelling**
+
+Now, let's use **Linear Regression** to try and predict price range. First, we'll use only the most correlated variable to price range which is ram.
+
+```{r}
+mymodel_fit1 = lm(price_range~ram, data=org_data)
+
+summary(mymodel_fit1)
+```
+
+Our results from our linear regression model are pretty good \-- our variable is statistically signifcant (as expected) but beyond that, our r squared value is 0.84 (**84%**)
+
+Does adding battery_power (the second most correlated variable to price range) to the mix improve our model?
+
+```{r}
+mymodel_fit2 = lm(price_range~ram+battery_power, data=org_data)
+
+summary(mymodel_fit2)
+```
+
+Yes, it improves our model! Can we improve our model even further by adding the third most correlated variable to price range (px_height)?
+
+```{r}
+mymodel_fit3 = lm(price_range~ram+battery_power+px_height, data=org_data)
+
+summary(mymodel_fit3)
+```
+
+We get an R squared value of 0.91, which is **91%** (out of 100). This result is very good, and it means our Linear Regression Model performed very well.
+
+## **conclusion**
+
+But wait a second\... we're using a regression model on a classification problem. Why does this work? Well because our y variable will either be 0, 1, 2, or 3 our model treats it as if it is regression and runs. Moreover, it performs well because it evaluates our 4 categories (above) as quantitative variables (not qualitative) and uses linear regression to find the optimal price range for each observation, which is then classified into 0, 1, 2, or 3.
+
+**Addressing our central question: Which features are most important in predicting a Mobile Phone's Price?**
+
+First, looking at our correlation matrix we see that ram is the most correlated variable to price range, battery power is the second most correlated variable to price range, and px height is the third most correlated variable to price range.
+
+Now, looking at the summary of our Linear Regression Model, we see that all 3 variables (ram, battery power, and px height) have very high t-values meaning that they are all very important in predicting our y-variable. Specifically, ram has the highest t-value, battery power has the second highest t-value, and px height has the third highest t-value. This "order of variable importance" directly corresponds to our findings from our correlation matrix above!
+
+**In conclusion, the most important features in predicting a Mobile Phone's price are ram, battery power, and pixel height.**
